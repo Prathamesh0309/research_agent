@@ -39,7 +39,7 @@ def run_critic(state):
     3. Recency — is the information current?
     
     Return an average score. If below 0.75, mark has_gaps as True
-    and briefly describe what is missing in gap_summary.
+    and describe what is missing in gap_summary in 10 words or less..
     """
 
     structured_llm = llm.with_structured_output(CriticOutput)
