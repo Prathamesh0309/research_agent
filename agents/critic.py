@@ -20,9 +20,10 @@ llm = ChatGoogleGenerativeAI(
 
 def run_critic(state):
     # Format results so LLM can read them
+    recent_results = state.search_results[-12:]
     results_text = ""
-    for r in state.search_results:
-        results_text += f"\nQuestion: {r['question']}\nContent: {r['content'][:300]}\n"
+    for r in recent_results:
+        results_text += f"\nQuestion: {r['question']}\nContent: {r['content'][:150]}\n"
 
     prompt = f"""
     Original query: {state.query}

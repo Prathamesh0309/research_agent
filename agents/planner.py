@@ -9,9 +9,11 @@ load_dotenv()
 
 # --- Structured output schema ---
 class PlannerOutput(BaseModel):
+    '''Defines the expected output from the planner LLM.'''
+    
     sub_questions: List[str]
 
-
+# Initialize the LLM with structured output capability
 llm = ChatGoogleGenerativeAI(
     model="gemini-2.5-flash",
     temperature=0,
@@ -20,6 +22,8 @@ llm = ChatGoogleGenerativeAI(
 
 # --- Planner function ---
 def run_planner(state):
+    '''Takes the initial query and breaks it down into focused sub-questions.'''
+
     prompt = f"""
     You are a research planner. Break this query into 4 focused sub-questions
     that together would fully answer it. Each should target a distinct angle.
@@ -27,6 +31,7 @@ def run_planner(state):
     Query: {state.query}
     """
     
+    # Use the LLM to generate structured output based on the defined schema
     structured_llm = llm.with_structured_output(PlannerOutput)
     result = structured_llm.invoke([
         SystemMessage(content="You are a research planning assistant."),

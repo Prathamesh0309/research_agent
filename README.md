@@ -1,22 +1,26 @@
 # Research Agent Prototype
 
-A lightweight research agent prototype for breaking a query into sub-questions, searching for answers, and evaluating coverage.
+A lightweight research agent prototype that breaks a query into focused research questions, gathers web evidence, evaluates coverage, and generates a final report.
 
 ## What’s included
 
-- `agents/schemas.py` — shared `ResearchState` model for the research loop
+- `schemas.py` — shared `ResearchState` model for the research loop
+- `graph.py` — constructs the LangGraph state machine and orchestrates the agent flow
+- `main.py` — entry point for running the full pipeline on a sample query
+- `test_pipeline.py` — simple pipeline evaluation harness with sample queries
 - `agents/planner.py` — generates focused sub-questions using Gemini
-- `agents/searcher.py` — queries a search API for supporting content
-- `agents/critic.py` — evaluates coverage and gap analysis
-- `agents/test_planner.py` — example run of the planner and searcher pipeline
+- `agents/searcher.py` — gathers web evidence via Tavily
+- `agents/critic.py` — scores coverage and identifies gaps
+- `agents/writer.py` — writes a structured research report from the gathered evidence
 
 ## Current status
 
 This project is an early-stage prototype.
 
-- The pipeline currently includes planning, search, and critique components
-- A final synthesis/answer generation loop is not yet implemented
-- Error handling, orchestration, and production-ready packaging are still pending
+- A graph-based pipeline now runs planner → searcher → critic → writer
+- The critic can loop back to the searcher when coverage is insufficient
+- A final report writer is implemented
+- Production-ready packaging, robust error handling, and broader test coverage are still pending
 
 ## Requirements
 
@@ -39,40 +43,42 @@ From the repository root:
 
 ```bash
 source research-agent/bin/activate
-pip install -r requirements.txt
-```
-
-If `requirements.txt` is not present yet, install the main dependencies used in this prototype:
-
-```bash
 pip install python-dotenv pydantic langchain-google-genai tavily
 ```
 
 ## Run the prototype
 
+Run the main pipeline:
+
 ```bash
 source research-agent/bin/activate
-python agents/test_planner.py
+python main.py
 ```
 
-This will:
+Run the pipeline evaluator:
 
-1. create a `ResearchState` for a sample query
-2. generate sub-questions
-3. run the searcher to collect results
-4. print a small output summary
+```bash
+source research-agent/bin/activate
+python test_pipeline.py
+```
 
-## Next steps
+## How it works
 
-Potential next work includes:
-
-- adding a loop that repeats search and critique until coverage is sufficient
-- generating a final report or answer summary
-- adding unit tests and validation for all components
-- improving prompt design and output handling
+1. `main.py` builds the graph from `graph.py` and initializes a `ResearchState`
+2. `planner.py` generates sub-questions from the user query
+3. `searcher.py` gathers evidence for the sub-questions (or for gap summaries)
+4. `critic.py` scores coverage and decides whether to loop back or proceed
+5. `writer.py` generates a final structured research report
 
 ## Notes
 
-- The project currently depends on Google Gemini via `langchain_google_genai`
-- The `tavily` search client is used for external search results
+- The project depends on Google Gemini via `langchain_google_genai`
+- The `tavily` client is used for external search results
 - Keep API keys private and do not commit them to source control
+
+## Future work
+
+- improve error handling and retries for API failures
+- add more robust test coverage for each agent step
+- support configurable loop policies and dynamic stopping criteria
+- add a final answer synthesis and report summary export

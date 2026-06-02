@@ -12,6 +12,9 @@ llm = ChatGoogleGenerativeAI(
 )
 
 def run_writer(state):
+    '''Takes the search results and crafts a structured research report. 
+    If the critic identified gaps, it emphasizes those in the report.'''
+    
     results_text = ""
     for r in state.search_results:
         results_text += f"\nSource: {r['title']} ({r['url']})\nContent: {r['content'][:400]}\n"

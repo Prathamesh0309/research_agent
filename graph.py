@@ -7,6 +7,10 @@ from agents.writer import run_writer
 
 # --- Decision function (the brain of the loop) ---
 def should_continue(state: ResearchState):
+    '''Determines whether to loop back to the searcher or move forward to 
+    the writer based on the critic's feedback.'''
+
+    # To prevent infinite loops, we also check if we've hit the max iterations.
     if state.iteration >= state.max_iterations:
         return "writer"        # force forward, no infinite loops
     if state.has_gaps and state.coverage_score < 0.75:
@@ -15,6 +19,7 @@ def should_continue(state: ResearchState):
 
 # --- Build the graph ---
 def build_graph():
+    '''Constructs the state graph that defines the flow of our research agent.'''
     graph = StateGraph(ResearchState)
 
     # Add all agents as nodes

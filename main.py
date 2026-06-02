@@ -2,6 +2,7 @@ from graph import build_graph
 from schemas import ResearchState
 
 def run(query: str):
+    '''Main function to run the research agent loop. It initializes the graph and starts the process.'''
     graph = build_graph()
     
     initial_state = ResearchState(query=query)

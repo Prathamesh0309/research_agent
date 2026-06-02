@@ -6,6 +6,7 @@ from typing import List, Optional
 load_dotenv()
 
 class ResearchState(BaseModel):
+    '''Represents the state of the research process at any point in time.'''
     query: str
     sub_questions: List[str] = []
     search_results: List[dict] = []     # what the searcher finds
