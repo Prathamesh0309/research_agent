@@ -63,7 +63,7 @@ research-agent/
 │   ├── searcher.py          # Tavily search + result accumulation
 │   ├── critic.py            # coverage scoring + gap detection
 │   └── writer.py            # report synthesis
-└── eval/
+└── evals/
     ├── test_agents.py       # unit tests per agent
     └── test_pipeline.py     # end-to-end evaluation across queries
 ```
@@ -166,7 +166,7 @@ Tested across 3 queries comparing single-pass (no loop) vs full iterative pipeli
 
 To run evaluation:
 ```bash
-python eval/test_pipeline.py
+python evals/test_pipeline.py
 ```
 
 ---
