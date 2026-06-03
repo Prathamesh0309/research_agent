@@ -13,7 +13,7 @@ class CriticOutput(BaseModel):
     gap_summary: str           # what's missing (used if looping back)
 
 llm = ChatGoogleGenerativeAI(
-    model="gemini-2.5-flash",
+    model="gemini-3.1-flash-lite",
     temperature=0,
     google_api_key=os.getenv("GEMINI_API_KEY")
 )

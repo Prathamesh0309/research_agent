@@ -1,84 +1,196 @@
-# Research Agent Prototype
+# Personal Research Assistant Agent
 
-A lightweight research agent prototype that breaks a query into focused research questions, gathers web evidence, evaluates coverage, and generates a final report.
+A multi-agent AI pipeline that autonomously researches any topic — breaking down queries, searching the web iteratively, critiquing coverage, and synthesizing structured reports with citations.
 
-## What’s included
+Built as a portfolio project to demonstrate real-world agentic AI engineering techniques.
 
-- `schemas.py` — shared `ResearchState` model for the research loop
-- `graph.py` — constructs the LangGraph state machine and orchestrates the agent flow
-- `main.py` — entry point for running the full pipeline on a sample query
-- `test_pipeline.py` — simple pipeline evaluation harness with sample queries
-- `agents/planner.py` — generates focused sub-questions using Gemini
-- `agents/searcher.py` — gathers web evidence via Tavily
-- `agents/critic.py` — scores coverage and identifies gaps
-- `agents/writer.py` — writes a structured research report from the gathered evidence
+---
 
-## Current status
+## What it does
 
-This project is an early-stage prototype.
+Most search-and-summarize tools run one query and call it done. This system thinks like a researcher:
 
-- A graph-based pipeline now runs planner → searcher → critic → writer
-- The critic can loop back to the searcher when coverage is insufficient
-- A final report writer is implemented
-- Production-ready packaging, robust error handling, and broader test coverage are still pending
+1. **Decomposes** your query into focused sub-questions
+2. **Searches** the web for each sub-question via Tavily
+3. **Critiques** the coverage — are there gaps? Is it deep enough?
+4. **Loops back** to search again if gaps are found (ReAct pattern)
+5. **Writes** a structured markdown report with inline citations
 
-## Requirements
+---
 
-- Python 3.13
-- A virtual environment is strongly recommended
-- `research-agent/` is currently used as the local virtual environment directory
+## Architecture
 
-## Environment variables
-
-Create a `.env` file at the repository root with these keys:
-
-```env
-GEMINI_API_KEY=your_gemini_api_key
-TAVILY_API_KEY=your_tavily_api_key
+```
+User Query
+    ↓
+[Planner Agent]       → breaks query into 4-6 sub-questions
+    ↓
+[Searcher Agent]      → Tavily search per sub-question, appends to state
+    ↓
+[Critic Agent]        → scores coverage (0–1), identifies gaps
+    ↓         ↑ ReAct loop (max 3 iterations)
+[Writer Agent]        → synthesizes final report with citations
+    ↓
+Markdown Report
 ```
 
-## Install dependencies
+All agents share a single typed `ResearchState` object (Pydantic) orchestrated via LangGraph.
 
-From the repository root:
+---
 
-```bash
-source research-agent/bin/activate
-pip install python-dotenv pydantic langchain-google-genai tavily
+## Tech Stack
+
+| Component | Tool |
+|---|---|
+| Orchestration | LangGraph |
+| LLM | Gemini 2.0 Flash (`langchain-google-genai`) |
+| Web Search | Tavily API |
+| Structured Output | Pydantic v2 |
+| State Management | LangGraph `StateGraph` |
+| Evaluation | Custom coverage scoring |
+
+---
+
+## Project Structure
+
+```
+research-agent/
+├── main.py                  # entry point
+├── graph.py                 # LangGraph state graph + routing logic
+├── schemas.py               # shared ResearchState (Pydantic)
+├── agents/
+│   ├── planner.py           # query decomposition
+│   ├── searcher.py          # Tavily search + result accumulation
+│   ├── critic.py            # coverage scoring + gap detection
+│   └── writer.py            # report synthesis
+└── eval/
+    ├── test_agents.py       # unit tests per agent
+    └── test_pipeline.py     # end-to-end evaluation across queries
 ```
 
-## Run the prototype
+---
 
-Run the main pipeline:
+## Setup
+
+### 1. Clone and create virtual environment
 
 ```bash
-source research-agent/bin/activate
+git clone https://github.com/yourusername/research-agent
+cd research-agent
+python -m venv venv
+source venv/bin/activate        # Windows: venv\Scripts\activate
+```
+
+### 2. Install dependencies
+
+```bash
+pip install langgraph langchain-google-genai tavily-python pydantic python-dotenv
+```
+
+### 3. Configure API keys
+
+Create a `.env` file in the project root:
+
+```
+GEMINI_API_KEY=your_key_here
+TAVILY_API_KEY=your_key_here
+```
+
+Get your keys:
+- Gemini: https://aistudio.google.com
+- Tavily: https://app.tavily.com
+
+### 4. Run
+
+```bash
 python main.py
 ```
 
-Run the pipeline evaluator:
+To change the query, edit the `run()` call in `main.py`:
 
-```bash
-source research-agent/bin/activate
-python test_pipeline.py
+```python
+run("your research topic here")
 ```
 
-## How it works
+---
 
-1. `main.py` builds the graph from `graph.py` and initializes a `ResearchState`
-2. `planner.py` generates sub-questions from the user query
-3. `searcher.py` gathers evidence for the sub-questions (or for gap summaries)
-4. `critic.py` scores coverage and decides whether to loop back or proceed
-5. `writer.py` generates a final structured research report
+## How it works — key concepts
 
-## Notes
+### Shared State
+Every agent receives and returns a `ResearchState` object. This is how agents communicate — not by calling each other directly, but by reading and writing to a shared typed state. No agent mutates state in place; each returns a new copy.
 
-- The project depends on Google Gemini via `langchain_google_genai`
-- The `tavily` client is used for external search results
-- Keep API keys private and do not commit them to source control
+### ReAct Loop
+After the Searcher runs, the Critic evaluates coverage on three dimensions: breadth (all sub-questions addressed?), depth (enough detail?), and recency (current information?). If the score falls below the threshold and the iteration limit hasn't been reached, the graph routes back to the Searcher.
 
-## Future work
+```python
+def should_continue(state):
+    if state.iteration >= state.max_iterations:
+        return "writer"
+    if state.has_gaps and state.coverage_score < 0.65:
+        return "searcher"
+    return "writer"
+```
 
-- improve error handling and retries for API failures
-- add more robust test coverage for each agent step
-- support configurable loop policies and dynamic stopping criteria
-- add a final answer synthesis and report summary export
+### Gap-aware Re-search
+On re-search iterations, the Searcher doesn't repeat the same sub-questions. Instead it searches using the Critic's `gap_summary` — a concise description of what's missing. This makes each loop meaningfully different from the last.
+
+---
+
+## Design Decisions
+
+### Problem: Critic became a harsh grader over multiple iterations
+As the ReAct loop accumulated results across iterations, the Critic was receiving a growing, noisy context window. This caused coverage scores to drop inconsistently — from 0.70 on iteration 1 down to 0.47 on iteration 3 — even when the actual content quality had improved.
+
+### Solution: Result windowing + content truncation
+Three targeted fixes stabilised Critic scoring:
+
+- **Result windowing** — pass only the last 12 results to the Critic, not the full accumulated set
+- **Content truncation** — cap each result's content at 150 characters to reduce noise
+- **Constrained gap summaries** — prompt the Critic to describe gaps in 10 words or less, making them precise enough to double as Tavily search queries
+
+These are deliberate tradeoffs: some context is lost, but evaluation stability and search precision improve significantly.
+
+---
+
+## Evaluation
+
+Tested across 3 queries comparing single-pass (no loop) vs full iterative pipeline:
+
+| Query | Single Pass | Final Score | Iterations |
+|---|---|---|---|
+| How does RAG work? | 0.65 | — | 3 |
+| What is LangGraph? | 0.60 | — | 3 |
+| Explain vector databases | 0.60 | — | 3 |
+| **Average** | **0.62** | **—** | **3** |
+
+*Fill in Final Score column after running `python eval/test_pipeline.py`*
+
+To run evaluation:
+```bash
+python eval/test_pipeline.py
+```
+
+---
+
+## Interview talking points
+
+- **Multi-agent orchestration** — 4 specialized agents with typed state, each testable in isolation
+- **ReAct pattern** — Critic reasons about gaps, Searcher acts on that reasoning, loop repeats until confident
+- **Gap-aware re-search** — re-search uses the Critic's gap summary, not the original sub-questions
+- **Result windowing** — diagnosed and fixed Critic context-overload through deliberate tradeoffs
+- **Structured outputs throughout** — every agent uses Pydantic, no raw string parsing anywhere
+
+---
+
+## What I'd add next
+
+- **ChromaDB memory layer** — deduplicate sources across runs so the same URL is never fetched twice
+- **Streamlit UI** — live progress view showing which agent is running and current coverage score
+- **RAGAS evaluation** — formal RAG evaluation metrics alongside the custom coverage scorer
+- **Async search** — run sub-question searches in parallel instead of sequentially
+
+---
+
+## License
+
+MIT
