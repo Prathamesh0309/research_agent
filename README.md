@@ -75,7 +75,7 @@ research-agent/
 ### 1. Clone and create virtual environment
 
 ```bash
-git clone https://github.com/yourusername/research-agent
+git clone https://github.com/prathamesh0309/research-agent
 cd research-agent
 python -m venv venv
 source venv/bin/activate        # Windows: venv\Scripts\activate
@@ -151,7 +151,7 @@ Three targeted fixes stabilised Critic scoring:
 These are deliberate tradeoffs: some context is lost, but evaluation stability and search precision improve significantly.
 
 ---
-
+<!-- 
 ## Evaluation
 
 Tested across 3 queries comparing single-pass (no loop) vs full iterative pipeline:
@@ -162,8 +162,7 @@ Tested across 3 queries comparing single-pass (no loop) vs full iterative pipeli
 | What is LangGraph? | 0.60 | — | 3 |
 | Explain vector databases | 0.60 | — | 3 |
 | **Average** | **0.62** | **—** | **3** |
-
-*Fill in Final Score column after running `python eval/test_pipeline.py`*
+-->
 
 To run evaluation:
 ```bash
