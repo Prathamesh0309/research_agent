@@ -75,7 +75,7 @@ research-agent/
 ### 1. Clone and create virtual environment
 
 ```bash
-git clone https://github.com/prathamesh0309/research-agent
+git clone https://github.com/Prathamesh0309/research-agent
 cd research-agent
 python -m venv venv
 source venv/bin/activate        # Windows: venv\Scripts\activate
