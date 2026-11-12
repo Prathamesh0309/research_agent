@@ -37,10 +37,11 @@ All agents share a single typed `ResearchState` object (Pydantic), orchestrated 
 | Component | Tool |
 | --- | --- |
 | Orchestration | LangGraph |
-| LLM | Gemini 2.0 Flash (`langchain-google-genai`) |
+| LLM | Gemini 3.1 Flash Lite (`langchain-google-genai`) |
 | Web search | Tavily API |
 | Structured output | Pydantic v2 |
-| Evaluation | Custom coverage scoring |
+| Evaluation | Custom coverage scoring, single-pass vs looped comparison |
+| Tests / CI | pytest (offline, mocked), GitHub Actions |
 
 ## Project structure
 
@@ -54,9 +55,12 @@ research_agent/
 │   ├── searcher.py          # Tavily search + result accumulation
 │   ├── critic.py            # coverage scoring + gap detection
 │   └── writer.py            # report synthesis
-└── evals/
-    ├── test_agents.py       # unit tests per agent
-    └── test_pipeline.py     # end-to-end evaluation across queries
+├── tests/                   # offline unit tests (mocked search, no API keys)
+│   ├── test_searcher.py     # accumulation, dedupe, gap-driven search
+│   └── test_routing.py      # should_continue loop/stop decisions
+└── evals/                   # live-API scripts, run by hand
+    ├── test_planner.py      # planner smoke run
+    └── test_pipeline.py     # single-pass vs looped coverage across queries
 ```
 
 ## Setup
@@ -66,7 +70,7 @@ git clone https://github.com/Prathamesh0309/research_agent
 cd research_agent
 python -m venv venv
 source venv/bin/activate        # Windows: venv\Scripts\activate
-pip install langgraph langchain-google-genai tavily-python pydantic python-dotenv
+pip install -r requirements.txt
 ```
 
 Create a `.env` file in the project root:
@@ -90,7 +94,14 @@ To change the query, edit the `run()` call in `main.py`:
 run("your research topic here")
 ```
 
-Run the evaluation:
+Run the tests (offline, no API keys needed):
+
+```bash
+pip install -r requirements-dev.txt
+pytest
+```
+
+Run the live evaluation (calls Gemini and Tavily, so it uses your keys and quota):
 
 ```bash
 python evals/test_pipeline.py
@@ -108,7 +119,7 @@ After the Searcher runs, the Critic evaluates coverage on breadth (all sub-quest
 def should_continue(state):
     if state.iteration >= state.max_iterations:
         return "writer"
-    if state.has_gaps and state.coverage_score < 0.65:
+    if state.has_gaps and state.coverage_score < 0.75:
         return "searcher"
     return "writer"
 ```
